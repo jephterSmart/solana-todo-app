@@ -10,10 +10,11 @@ describe("todo-list-app", () => {
 
   const program = anchor.workspace.TodoListApp as Program<TodoListApp>;
   const author = program.provider as anchor.AnchorProvider;
+  const taskAcc = anchor.web3.Keypair.generate();
   it("can create task", async () => {
     // Add your test here.
     const taskName = "First Task";
-    const taskAcc = anchor.web3.Keypair.generate();
+
     const tx = await program.methods
       .addingTask(taskName)
       .accounts({
@@ -36,5 +37,47 @@ describe("todo-list-app", () => {
     assert.equal(taskAccount.isDone, false);
     assert.ok(taskAccount.createdAt);
     assert.ok(taskAccount.updatedAt);
+  });
+  it("can update a task", async () => {
+    const taskAccountBefore = await program.account.task.fetch(
+      taskAcc.publicKey
+    );
+    const tx = await program.methods
+      .updatingTask(true)
+      .accounts({
+        author: author.wallet.publicKey,
+        task: taskAcc.publicKey,
+      })
+      .signers([])
+      .rpc();
+    console.log("Your transaction signature", tx);
+    const taskAccount = await program.account.task.fetch(taskAcc.publicKey);
+    assert.equal(taskAccount.isDone, true);
+    assert.ok(taskAccount.createdAt);
+
+    assert.ok(
+      taskAccount.updatedAt.toNumber() >= taskAccountBefore.updatedAt.toNumber()
+    );
+  });
+  it("can delete a task", async () => {
+    const taskAccountBefore = await program.account.task.fetch(
+      taskAcc.publicKey
+    );
+    const tx = await program.methods
+      .deletingTask()
+      .accounts({
+        author: author.wallet.publicKey,
+        task: taskAcc.publicKey,
+      })
+      .signers([])
+      .rpc();
+    console.log("Your transaction signature", tx);
+    const taskAccount = await program.account.task.fetch(taskAcc.publicKey);
+    assert.equal(taskAccount.isDone, true);
+    assert.ok(taskAccount.createdAt);
+
+    assert.ok(
+      taskAccount.updatedAt.toNumber() >= taskAccountBefore.updatedAt.toNumber()
+    );
   });
 });
